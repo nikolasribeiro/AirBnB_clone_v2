@@ -38,7 +38,7 @@ class TestConsole(unittest.TestCase):
             os.remove("file.json")
         except Exception:
             pass
-
+ 
     def test_pep8_console(self):
         """Pep8 console.py"""
         style = pep8.StyleGuide(quiet=True)
