@@ -23,7 +23,9 @@ class HBNBCommand(cmd.Cmd):
                'State': State, 'City': City, 'Amenity': Amenity,
                'Review': Review
               }
+
     dot_cmds = ['all', 'count', 'show', 'destroy', 'update']
+    
     types = {
              'number_rooms': int, 'number_bathrooms': int,
              'max_guest': int, 'price_by_night': int,
@@ -112,6 +114,36 @@ class HBNBCommand(cmd.Cmd):
     def emptyline(self):
         """ Overrides the emptyline method of CMD """
         pass
+    
+    def __parse_string(self, value):
+        """ parses attribute value passed as string """
+        value = value.strip('"').replace('_', ' ')
+        index = 0
+        while index < len(value):
+            index = value.find('\\', index)
+            if index == -1:
+                break
+            if value[index+1] == '"':
+                value_list = list(value)
+                del value_list[index]
+                value = ''.join(value_list)
+                index += 2
+        return value
+
+    def __parse_number(self, value):
+        """ parses attribute value passed as number """
+        if value.find('.') != -1:
+            try:
+                value = float(value)
+            except:
+                pass
+        else:
+            try:
+                value = int(value)
+            except:
+                pass
+        return value
+
 
     def do_create(self, args):
         """ Create an object of any class"""
@@ -120,28 +152,26 @@ class HBNBCommand(cmd.Cmd):
             return
 
         commands = args.split(' ')
-        setters = {}
 
         if commands[0] not in HBNBCommand.classes:
             print("** class doesn't exist **")
             return
 
-        for index in range(len(commands)):
-
-            if index == 0:
-                continue
-        #    print("Esto es attr: ", commands[index].split('='))
-            temp = commands[index].split('=')
-            setters[temp[0]] = temp[1]
-
-        print("Esto es setters: ", setters)
-
-        """
-        new_instance = HBNBCommand.classes[commands[0]]()
-        storage.save()
-        print(new_instance.id)
-        storage.save()
-        """
+        for key, value in HBNBCommand.classes.items():
+            if key == commands[0]:
+                my_obj = value()
+                for param in commands[1:]:
+                    temp = param.split('=')
+                    value = temp[1]
+                    if value[0] == '"' and value[-1] == '"':
+                        value = self.__parse_string(value)
+                    else:
+                        value = self.__parse_number(value)
+                    
+                    my_obj.save_object_from_dict(temp[0], value)
+                
+                my_obj.save()
+                print(my_obj.id)
 
 
 
