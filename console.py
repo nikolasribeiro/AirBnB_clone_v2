@@ -170,7 +170,7 @@ class HBNBCommand(cmd.Cmd):
                     
                     my_obj.save_object_from_dict(temp[0], value)
                 
-                my_obj.save() 
+                my_obj.save()
                 print(my_obj.id)
 
 
