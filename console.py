@@ -153,7 +153,7 @@ class HBNBCommand(cmd.Cmd):
                         continue
             if value != "":
                 setattr(new_obj, setters[0], value)
-  
+
         storage.save()
         print(new_obj.id)
         storage.save()
