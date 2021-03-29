@@ -27,6 +27,13 @@ class BaseModel:
         cls = (str(type(self)).split('.')[-1]).split('\'')[0]
         return '[{}] ({}) {}'.format(cls, self.id, self.__dict__)
 
+    def save_object_from_dict(self, name, value):
+        """
+            updates the basemodel and sets the correct attributes
+        """
+        setattr(self, name, value)
+        self.save()
+
     def save(self):
         """Updates updated_at with current time when instance is changed"""
         from models import storage
@@ -44,4 +51,4 @@ class BaseModel:
         return dictionary
     
     def delete(self):
-        storage.delete(self)
+        models.storage.delete(self)
