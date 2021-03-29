@@ -40,10 +40,10 @@ class HBNBCommand(cmd.Cmd):
     def precmd(self, line):
         """Reformat command line for advanced command syntax.
 
-        Usage: <class name>.<command>([<id> [<*setterss> or <**kwsetterss>]])
+        Usage: <class name>.<command>([<id> [<*args> or <**kwargs>]])
         (Brackets denote optional fields in usage example.)
         """
-        _cmd = _cls = _id = _setterss = ''  # initialize line elements
+        _cmd = _cls = _id = _args = ''  # initialize line elements
 
         # scan for general formating - i.e '.', '(', ')'
         if not ('.' in line and '(' in line and ')' in line):
@@ -60,10 +60,10 @@ class HBNBCommand(cmd.Cmd):
             if _cmd not in HBNBCommand.dot_cmds:
                 raise Exception
 
-            # if parantheses contain settersuments, parse them
+            # if parantheses contain arguments, parse them
             pline = pline[pline.find('(') + 1:pline.find(')')]
             if pline:
-                # partition setterss: (<id>, [<delim>], [<*setterss>])
+                # partition args: (<id>, [<delim>], [<*args>])
                 pline = pline.partition(', ')  # pline convert to tuple
 
                 # isolate _id, stripping quotes
@@ -71,17 +71,17 @@ class HBNBCommand(cmd.Cmd):
                 # possible bug here:
                 # empty quotes register as empty _id when replaced
 
-                # if settersuments exist beyond _id
+                # if arguments exist beyond _id
                 pline = pline[2].strip()  # pline is now str
                 if pline:
-                    # check for *setterss or **kwsetterss
+                    # check for *args or **kwargs
                     if pline[0] == '{' and pline[-1] == '}'\
                             and type(eval(pline)) is dict:
-                        _setterss = pline
+                        _args = pline
                     else:
-                        _setterss = pline.replace(',', '')
-                        # _setterss = _setterss.replace('\"', '')
-            line = ' '.join([_cmd, _cls, _id, _setterss])
+                        _args = pline.replace(',', '')
+                        # _args = _args.replace('\"', '')
+            line = ' '.join([_cmd, _cls, _id, _args])
 
         except Exception as mess:
             pass
@@ -102,7 +102,7 @@ class HBNBCommand(cmd.Cmd):
         """ Prints the help documentation for quit  """
         print("Exits the program with formatting\n")
 
-    def do_EOF(self, setters):
+    def do_EOF(self, arg):
         """ Handles EOF to exit program """
         print()
         exit()
@@ -114,49 +114,65 @@ class HBNBCommand(cmd.Cmd):
     def emptyline(self):
         """ Overrides the emptyline method of CMD """
         pass
+    
+    def __parse_string(self, value):
+        """ parses attribute value passed as string """
+        value = value.strip('"').replace('_', ' ')
+        index = 0
+        while index < len(value):
+            index = value.find('\\', index)
+            if index == -1:
+                break
+            if value[index+1] == '"':
+                value_list = list(value)
+                del value_list[index]
+                value = ''.join(value_list)
+                index += 2
+        return value
 
-    def do_create(self, setterss):
+    def __parse_number(self, value):
+        """ parses attribute value passed as number """
+        if value.find('.') != -1:
+            try:
+                value = float(value)
+            except:
+                pass
+        else:
+            try:
+                value = int(value)
+            except:
+                pass
+        return value
+
+
+    def do_create(self, args):
         """ Create an object of any class"""
-        if not setterss:
+        if not args:
             print("** class name missing **")
             return
+        
+        commands = args.split(' ')
 
-        console_commands = setterss.split(' ')
-
-        if console_commands[0] not in HBNBCommand.classes:
+        if commands[0] not in HBNBCommand.classes:
             print("** class doesn't exist **")
             return
 
-        new_obj = HBNBCommand.classes[console_commands[0]]()
+        for key, value in HBNBCommand.classes.items():
+            if key == commands[0]:
+                my_obj = value()
+                for param in commands[1:]:
+                    temp = param.split('=')
+                    value = temp[1]
+                    if value[0] == '"' and value[-1] == '"':
+                        value = self.__parse_string(value)
+                    else:
+                        value = self.__parse_number(value)
+                    
+                    my_obj.save_object_from_dict(temp[0], value)
+                
+                my_obj.save()
+                print(my_obj.id)
 
-        for i in range(1, len(console_commands)):
-
-            setters = console_commands[i].split('=', 1)
-            value = ""
-
-            if setters[1][0] == '"' or setters[1][0] == "'":
-                value = setters[1][1:-1]
-                if '"' or "'" in value:
-                    value = value.replace('"', '\"')
-                if "_" in value:
-                    value = value.replace('_', ' ')
-            else:
-                if '.' in setters[1]:
-                    try:
-                        value = float(setters[1])
-                    except:
-                        continue
-                else:
-                    try:
-                        value = int(setters[1])
-                    except:
-                        continue
-            if value != "":
-                setattr(new_obj, setters[0], value)
-
-        storage.save()
-        print(new_obj.id)
-        storage.save()
 
 
     def help_create(self):
@@ -164,13 +180,13 @@ class HBNBCommand(cmd.Cmd):
         print("Creates a class of any type")
         print("[Usage]: create <className>\n")
 
-    def do_show(self, setterss):
+    def do_show(self, args):
         """ Method to show an individual object """
-        new = setterss.partition(" ")
+        new = args.partition(" ")
         c_name = new[0]
         c_id = new[2]
 
-        # guard against trailing setterss
+        # guard against trailing args
         if c_id and ' ' in c_id:
             c_id = c_id.partition(' ')[0]
 
@@ -197,9 +213,9 @@ class HBNBCommand(cmd.Cmd):
         print("Shows an individual instance of a class")
         print("[Usage]: show <className> <objectId>\n")
 
-    def do_destroy(self, setterss):
+    def do_destroy(self, args):
         """ Destroys a specified object """
-        new = setterss.partition(" ")
+        new = args.partition(" ")
         c_name = new[0]
         c_id = new[2]
         if c_id and ' ' in c_id:
@@ -230,17 +246,17 @@ class HBNBCommand(cmd.Cmd):
         print("Destroys an individual instance of a class")
         print("[Usage]: destroy <className> <objectId>\n")
 
-    def do_all(self, setterss):
+    def do_all(self, args):
         """ Shows all objects, or all objects of a class"""
         print_list = []
 
-        if setterss:
-            setterss = setterss.split(' ')[0]  # remove possible trailing setterss
-            if setterss not in HBNBCommand.classes:
+        if args:
+            args = args.split(' ')[0]  # remove possible trailing args
+            if args not in HBNBCommand.classes:
                 print("** class doesn't exist **")
                 return
             for k, v in storage._FileStorage__objects.items():
-                if k.split('.')[0] == setterss:
+                if k.split('.')[0] == args:
                     print_list.append(str(v))
         else:
             for k, v in storage._FileStorage__objects.items():
@@ -253,11 +269,11 @@ class HBNBCommand(cmd.Cmd):
         print("Shows all objects, or all of a class")
         print("[Usage]: all <className>\n")
 
-    def do_count(self, setterss):
+    def do_count(self, args):
         """Count current number of class instances"""
         count = 0
         for k, v in storage._FileStorage__objects.items():
-            if setterss == k.split('.')[0]:
+            if args == k.split('.')[0]:
                 count += 1
         print(count)
 
@@ -265,14 +281,14 @@ class HBNBCommand(cmd.Cmd):
         """ """
         print("Usage: count <class_name>")
 
-    def do_update(self, setterss):
+    def do_update(self, args):
         """ Updates a certain object with new info """
-        c_name = c_id = att_name = att_val = kwsetterss = ''
+        c_name = c_id = att_name = att_val = kwargs = ''
 
-        # isolate cls from id/setterss, ex: (<cls>, delim, <id/setterss>)
-        setterss = setterss.partition(" ")
-        if setterss[0]:
-            c_name = setterss[0]
+        # isolate cls from id/args, ex: (<cls>, delim, <id/args>)
+        args = args.partition(" ")
+        if args[0]:
+            c_name = args[0]
         else:  # class name not present
             print("** class name missing **")
             return
@@ -280,10 +296,10 @@ class HBNBCommand(cmd.Cmd):
             print("** class doesn't exist **")
             return
 
-        # isolate id from setterss
-        setterss = setterss[2].partition(" ")
-        if setterss[0]:
-            c_id = setterss[0]
+        # isolate id from args
+        args = args[2].partition(" ")
+        if args[0]:
+            c_id = args[0]
         else:  # id not present
             print("** instance id missing **")
             return
@@ -296,43 +312,43 @@ class HBNBCommand(cmd.Cmd):
             print("** no instance found **")
             return
 
-        # first determine if kwsetterss or setterss
-        if '{' in setterss[2] and '}' in setterss[2] and type(eval(setterss[2])) is dict:
-            kwsetterss = eval(setterss[2])
-            setterss = []  # reformat kwsetterss into list, ex: [<name>, <value>, ...]
-            for k, v in kwsetterss.items():
-                setterss.append(k)
-                setterss.append(v)
-        else:  # isolate setterss
-            setterss = setterss[2]
-            if setterss and setterss[0] == '\"':  # check for quoted setters
-                second_quote = setterss.find('\"', 1)
-                att_name = setterss[1:second_quote]
-                setterss = setterss[second_quote + 1:]
+        # first determine if kwargs or args
+        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) is dict:
+            kwargs = eval(args[2])
+            args = []  # reformat kwargs into list, ex: [<name>, <value>, ...]
+            for k, v in kwargs.items():
+                args.append(k)
+                args.append(v)
+        else:  # isolate args
+            args = args[2]
+            if args and args[0] == '\"':  # check for quoted arg
+                second_quote = args.find('\"', 1)
+                att_name = args[1:second_quote]
+                args = args[second_quote + 1:]
 
-            setterss = setterss.partition(' ')
+            args = args.partition(' ')
 
-            # if att_name was not quoted setters
-            if not att_name and setterss[0] != ' ':
-                att_name = setterss[0]
-            # check for quoted val setters
-            if setterss[2] and setterss[2][0] == '\"':
-                att_val = setterss[2][1:setterss[2].find('\"', 1)]
+            # if att_name was not quoted arg
+            if not att_name and args[0] != ' ':
+                att_name = args[0]
+            # check for quoted val arg
+            if args[2] and args[2][0] == '\"':
+                att_val = args[2][1:args[2].find('\"', 1)]
 
-            # if att_val was not quoted setters
-            if not att_val and setterss[2]:
-                att_val = setterss[2].partition(' ')[0]
+            # if att_val was not quoted arg
+            if not att_val and args[2]:
+                att_val = args[2].partition(' ')[0]
 
-            setterss = [att_name, att_val]
+            args = [att_name, att_val]
 
         # retrieve dictionary of current objects
         new_dict = storage.all()[key]
 
         # iterate through attr names and values
-        for i, att_name in enumerate(setterss):
+        for i, att_name in enumerate(args):
             # block only runs on even iterations
             if (i % 2 == 0):
-                att_val = setterss[i + 1]  # following item is value
+                att_val = args[i + 1]  # following item is value
                 if not att_name:  # check for att_name
                     print("** attribute name missing **")
                     return
