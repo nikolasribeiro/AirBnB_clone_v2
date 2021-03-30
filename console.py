@@ -125,6 +125,35 @@ class HBNBCommand(cmd.Cmd):
         """ Overrides the emptyline method of CMD """
         pass
 
+    def __parse_string(self, value):
+        """ parses attribute value passed as string """
+        value = value.strip('"').replace('_', ' ')
+        index = 0
+        while index < len(value):
+            index = value.find('\\', index)
+            if index == -1:
+                break
+            if value[index+1] == '"':
+                value_list = list(value)
+                del value_list[index]
+                value = ''.join(value_list)
+                index += 2
+        return value
+
+    def __parse_number(self, value):
+        """ parses attribute value passed as number """
+        if value.find('.') != -1:
+            try:
+                value = float(value)
+            except:
+                pass
+        else:
+            try:
+                value = int(value)
+            except:
+                pass
+        return value
+
     def do_create(self, args):
         """ Create an object of any class"""
         if not args:
