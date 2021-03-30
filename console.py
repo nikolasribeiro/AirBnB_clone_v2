@@ -173,7 +173,7 @@ class HBNBCommand(cmd.Cmd):
                 my_obj.save()
                 print(my_obj.id)
 
-
+ 
 
     def help_create(self):
         """ Help information for the create method """
